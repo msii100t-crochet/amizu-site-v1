@@ -98,6 +98,9 @@
 
     const LABEL = { ch: "鎖", sc: "細編み", dc: "長編み", erase: "消しゴム" };
 
+const GRID = 30;      // グリッド間隔（今の線と同じ）
+const SNAP = true;    // スナップON/OFF（後でトグル化できる）
+    
     function load() {
       try { items = JSON.parse(localStorage.getItem(KEY) || "[]"); } catch { items = []; }
       titleEl.value = localStorage.getItem(KEY_TITLE) || "";
@@ -198,7 +201,9 @@
 
     function onCanvasTap(evt) {
       evt.preventDefault();
-      const p = getPos(evt);
+      const p = getPos(evt);const GRID = 30;      // グリッド間隔（今の線と同じ）
+const SNAP = true;    // スナップON/OFF（後でトグル化できる）
+      
 
       if (current === "erase") {
         const idx = findNearestIndex(p);
