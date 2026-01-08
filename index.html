@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>編み図メーカー（かぎ針）</title>
+  <style>
+    :root { --bg:#fff; --fg:#111; --muted:#666; --card:#f5f5f7; --line:#e6e6ea; }
+    body { margin:0; font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", sans-serif; background:var(--bg); color:var(--fg); }
+    header { padding:20px 16px; border-bottom:1px solid var(--line); position:sticky; top:0; background:rgba(255,255,255,.9); backdrop-filter: blur(6px); }
+    header h1 { margin:0; font-size:18px; }
+    header p { margin:6px 0 0; color:var(--muted); font-size:13px; }
+    main { padding:18px 16px 40px; max-width: 900px; margin:0 auto; }
+    .grid { display:grid; gap:12px; grid-template-columns: 1fr; }
+    @media (min-width: 860px){ .grid{ grid-template-columns: 1.2fr .8fr; } }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px; }
+    .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    button { border:1px solid var(--line); background:#fff; border-radius:999px; padding:10px 14px; font-size:14px; }
+    button:active { transform: translateY(1px); }
+    .small { font-size:12px; color:var(--muted); }
+    canvas { width:100%; height:auto; background:#fff; border:1px solid var(--line); border-radius:12px; }
+    input[type="text"]{ width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:10px; font-size:14px; background:#fff; }
+    .badge { display:inline-block; padding:4px 10px; border-radius:999px; background:#fff; border:1px solid var(--line); font-size:12px; color:var(--muted); }
+    footer { padding:16px; color:var(--muted); font-size:12px; text-align:center; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>編み図メーカー（かぎ針）</h1>
+    <p>まずは超かんたん版：クリックで ● を置けるだけ（保存＝端末内）</p>
+  </header>
+
+  <main class="grid">
+    <section class="card">
+      <div class="row" style="justify-content:space-between;">
+        <span class="badge" id="mode">モード：●を置く</span>
+        <span class="small">※スマホはタップでOK</span>
+      </div>
+
+      <div style="margin-top:12px;">
+        <canvas id="c" width="900" height="520"></canvas>
+      </div>
+
+      <div class="row" style="margin-top:12px;">
+        <button id="undo">1つ戻す</button>
+        <button id="clear">全部消す</button>
+        <button id="savepng">PNG保存</button>
+      </div>
+      <p class="small" style="margin:10px 0 0;">
+        使い方：キャンバスをタップ/クリック → ●が置けます。データは端末内に自動保存されます。
+      </p>
+    </section>
+
+    <aside class="card">
+      <h2 style="margin:0 0 10px; font-size:16px;">タイトル</h2>
+      <input id="title" type="text" placeholder="例）コースター 1段目" />
+      <p class="small">タイトルも端末内に保存されます。</p>
+
+      <hr style="border:none;border-top:1px solid var(--line); margin:14px 0;" />
+
+      <h2 style="margin:0 0 8px; font-size:16px;">次に作る機能（予定）</h2>
+      <ul class="small" style="line-height:1.7; margin:0; padding-left:18px;">
+        <li>記号パレット（鎖/細編み/長編み…）</li>
+        <li>グリッド＆スナップ</li>
+        <li>段番号/注釈</li>
+        <li>公開ギャラリー（後で）</li>
+      </ul>
+    </aside>
+  </main>
+
+  <footer>© 編み図メーカー（試作）</footer>
+
+  <script>
+    const canvas = document.getElementById("c");
+    const ctx = canvas.getContext("2d");
+    const titleEl = document.getElementById("title");
+    const undoBtn = document.getElementById("undo");
+    const clearBtn = document.getElementById("clear");
+    const savePngBtn = document.getElementById("savepng");
+
+    // --- state ---
+    const KEY = "amizu_dots_v1";
+    const KEY_TITLE = "amizu_title_v1";
+    let dots = [];
+
+    function load() {
+      try { dots = JSON.parse(localStorage.getItem(KEY) || "[]"); } catch { dots = []; }
+      titleEl.value = localStorage.getItem(KEY_TITLE) || "";
+    }
+
+    function persist() {
+      localStorage.setItem(KEY, JSON.stringify(dots));
+      localStorage.setItem(KEY_TITLE, titleEl.value || "");
+    }
+
+    function draw() {
+      // clear
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // light grid
+      ctx.save();
+      ctx.globalAlpha = 0.15;
+      ctx.strokeStyle = "#000";
+      for (let x=0; x<=canvas.width; x+=30) {
+        ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke();
+      }
+      for (let y=0; y<=canvas.height; y+=30) {
+        ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke();
+      }
+      ctx.restore();
+
+      // title
+      ctx.fillStyle = "#111";
+      ctx.font = "22px sans-serif";
+      ctx.fillText(titleEl.value || "（タイトル未設定）", 18, 36);
+
+      // dots
+      ctx.fillStyle = "#111";
+      for (const d of dots) {
+        ctx.beginPath();
+        ctx.arc(d.x, d.y, 8, 0, Math.PI*2);
+        ctx.fill();
+      }
+    }
+
+    function getPos(evt) {
+      const rect = canvas.getBoundingClientRect();
+      const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
+      const clientY = evt.touches ? evt.touches[0].clientY : evt.clientY;
+      // scale to canvas resolution
+      const x = (clientX - rect.left) * (canvas.width / rect.width);
+      const y = (clientY - rect.top) * (canvas.height / rect.height);
+      return { x, y };
+    }
+
+    function addDot(evt) {
+      evt.preventDefault();
+      const { x, y } = getPos(evt);
+      dots.push({ x, y });
+      persist();
+      draw();
+    }
+
+    canvas.addEventListener("click", addDot);
+    canvas.addEventListener("touchstart", addDot, { passive: false });
+
+    titleEl.addEventListener("input", () => { persist(); draw(); });
+
+    undoBtn.addEventListener("click", () => {
+      dots.pop();
+      persist();
+      draw();
+    });
+
+    clearBtn.addEventListener("click", () => {
+      if (!confirm("全部消しますか？")) return;
+      dots = [];
+      persist();
+      draw();
+    });
+
+    savePngBtn.addEventListener("click", () => {
+      const a = document.createElement("a");
+      a.href = canvas.toDataURL("image/png");
+      a.download = (titleEl.value || "amizu") + ".png";
+      a.click();
+    });
+
+    load();
+    draw();
+  </script>
+</body>
+</html>
