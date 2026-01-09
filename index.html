@@ -19,36 +19,35 @@
     button:active { transform: translateY(1px); }
     button.selected { border-color:#111; }
     .small { font-size:12px; color:var(--muted); }
-    canvas {
-  width:100%;
-  height:auto;
-  background:#fff;
-  border:1px solid var(--line);
-  border-radius:12px;
-  touch-action: none;
-
-  /* 🌟 ご褒美カスタム */
-  box-shadow: 0 10px 30px rgba(0,0,0,.08);
-}
-    input[type="text"]{ width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:10px; font-size:14px; background:#fff; }
     .badge { display:inline-block; padding:4px 10px; border-radius:999px; background:#fff; border:1px solid var(--line); font-size:12px; color:var(--muted); }
+
+    canvas{
+      width:100%;
+      height:auto;
+      background:#fff;
+      border:1px solid var(--line);
+      border-radius:12px;
+      touch-action: none;
+      box-shadow: 0 10px 30px rgba(0,0,0,.08);
+    }
+
+    input[type="text"]{ width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:10px; font-size:14px; background:#fff; }
     footer { padding:16px; color:var(--muted); font-size:12px; text-align:center; }
   </style>
 </head>
 <body>
   <header>
     <h1>編み図メーカー（かぎ針）</h1>
-    <p>記号パレット → 選んだ記号をタップで置けます（端末内に保存）</p>
+    <p>記号パレット → 選んだ記号をタップ/ドラッグで置けます（端末内に保存）</p>
   </header>
 
   <main class="grid">
     <section class="card">
       <div class="row" style="justify-content:space-between;">
         <span class="badge" id="mode">選択中：鎖</span>
-        <span class="small">※スマホはタップでOK</span>
+        <span class="small">※スマホ：タップ/ドラッグ＋二本指ピンチで拡大</span>
       </div>
 
-      <!-- パレット -->
       <div class="row" style="margin-top:12px;">
         <button class="tool selected" data-type="ch">鎖</button>
         <button class="tool" data-type="sc">細編み</button>
@@ -67,7 +66,7 @@
       </div>
 
       <p class="small" style="margin:10px 0 0;">
-        使い方：上で記号を選ぶ → キャンバスをタップ/クリックで配置。消しゴムは近い記号を削除します。
+        使い方：上で記号を選ぶ → キャンバスをタップ/ドラッグで配置。消しゴムは近い記号を削除します。
       </p>
     </section>
 
@@ -80,7 +79,7 @@
 
       <h2 style="margin:0 0 8px; font-size:16px;">次に作る機能（予定）</h2>
       <ul class="small" style="line-height:1.7; margin:0; padding-left:18px;">
-        <li>スナップ（格子に吸着）</li>
+        <li>スナップON/OFF切替</li>
         <li>段番号・注釈</li>
         <li>日本式記号の描画を精密化</li>
         <li>公開ギャラリー（後で）</li>
@@ -101,22 +100,28 @@
     const toolBtns = Array.from(document.querySelectorAll(".tool"));
 
     // --- state ---
-    const KEY = "amizu_items_v2";
-    const KEY_TITLE = "amizu_title_v1";
+    const KEY = "amizu_items_v3";
+    const KEY_TITLE = "amizu_title_v2";
     let items = []; // {x,y,type}
     let current = "ch"; // ch / sc / dc / erase
 
     const LABEL = { ch: "鎖", sc: "細編み", dc: "長編み", erase: "消しゴム" };
-    const GRID = 30;      // グリッド間隔（今の線と同じ）
-    const SNAP = true;    // スナップON/OFF（後でトグル化できる）
-    let scale = 1;
 
+    const GRID = 30;      // グリッド間隔
+    const SNAP = true;    // スナップON（後で切替可）
+
+    // --- drawing (drag) ---
     let isDrawing = false;
-    let lastPlaced = null;
-    
-　　　let isDrawing = false;
-　　　let lastPlaced = null; // {x,y}
-    
+    let lastPlaced = null; // {x,y}
+
+    // --- pinch zoom ---
+    let scale = 1.0;
+    const MIN_SCALE = 0.6;
+    const MAX_SCALE = 2.6;
+    let isPinching = false;
+    let pinchStartDist = 0;
+    let pinchStartScale = 1.0;
+
     function load() {
       try { items = JSON.parse(localStorage.getItem(KEY) || "[]"); } catch { items = []; }
       titleEl.value = localStorage.getItem(KEY_TITLE) || "";
@@ -133,14 +138,16 @@
       toolBtns.forEach(b => b.classList.toggle("selected", b.dataset.type === type));
     }
 
+    function clamp(v, min, max){ return Math.max(min, Math.min(max, v)); }
+
     function drawGrid() {
       ctx.save();
       ctx.globalAlpha = 0.14;
       ctx.strokeStyle = "#000";
-      for (let x=0; x<=canvas.width; x+=30) {
+      for (let x=0; x<=canvas.width; x+=GRID) {
         ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke();
       }
-      for (let y=0; y<=canvas.height; y+=30) {
+      for (let y=0; y<=canvas.height; y+=GRID) {
         ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke();
       }
       ctx.restore();
@@ -152,7 +159,6 @@
       ctx.fillText(titleEl.value || "（タイトル未設定）", 18, 36);
     }
 
-    // --- 記号の簡易描画（後で日本式に寄せられる） ---
     function drawSymbol(type, x, y) {
       ctx.save();
       ctx.strokeStyle = "#111";
@@ -162,18 +168,15 @@
       ctx.lineJoin = "round";
 
       if (type === "ch") {
-        // 鎖：小さな楕円（輪）
         ctx.beginPath();
         ctx.ellipse(x, y, 10, 7, 0, 0, Math.PI * 2);
         ctx.stroke();
       } else if (type === "sc") {
-        // 細編み：×
         ctx.beginPath();
         ctx.moveTo(x-8, y-8); ctx.lineTo(x+8, y+8);
         ctx.moveTo(x+8, y-8); ctx.lineTo(x-8, y+8);
         ctx.stroke();
       } else if (type === "dc") {
-        // 長編み：Tっぽい形
         ctx.beginPath();
         ctx.moveTo(x, y-12); ctx.lineTo(x, y+12);
         ctx.moveTo(x-10, y-2); ctx.lineTo(x+10, y-2);
@@ -183,123 +186,141 @@
     }
 
     function redraw() {
-  const s = (typeof scale === "number" && isFinite(scale)) ? scale : 1;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.save();
+      ctx.scale(scale, scale);
 
-  ctx.save();
-  ctx.scale(s, s);
+      drawGrid();
+      drawTitle();
+      for (const it of items) drawSymbol(it.type, it.x, it.y);
 
-  drawGrid();
-  drawTitle();
-  for (const it of items) drawSymbol(it.type, it.x, it.y);
-
-  ctx.restore();
-}
-
+      ctx.restore();
+    }
 
     function getPos(evt) {
       const rect = canvas.getBoundingClientRect();
       const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
       const clientY = evt.touches ? evt.touches[0].clientY : evt.clientY;
+
       const x = (clientX - rect.left) * (canvas.width / rect.width);
       const y = (clientY - rect.top) * (canvas.height / rect.height);
+
       return { x: x / scale, y: y / scale };
     }
 
-    function dist2(a, b) {
-  const dx = a.x - b.x;
-  const dy = a.y - b.y;
-  return dx*dx + dy*dy;
-}
-
-// 👇 ここに入れる！
-function touchDist(t1, t2) {
-  const dx = t1.clientX - t2.clientX;
-  const dy = t1.clientY - t2.clientY;
-  return Math.hypot(dx, dy);
-}
-
-function findNearestIndex(p, maxPx=22) {
-  if (items.length === 0) return -1;
-  const max2 = maxPx*maxPx;
-  let best = -1, bestD = Infinity;
-  for (let i=0;i<items.length;i++){
-    const d = dist2(p, items[i]);
-    if (d < bestD) { bestD = d; best = i; }
-  }
-  return bestD <= max2 ? best : -1;
-}
-
     function snapPoint(p) {
-  if (SNAP) {
-    p.x = Math.round(p.x / GRID) * GRID;
-    p.y = Math.round(p.y / GRID) * GRID;
-  }
-  return p;
-}
-
-function maybePlace(p) {
-  p = snapPoint(p);
-
-  // 消しゴムもドラッグでOK
-  if (current === "erase") {
-    const idx = findNearestIndex(p);
-    if (idx !== -1) {
-      items.splice(idx, 1);
-      persist(); redraw();
+      if (SNAP) {
+        p.x = Math.round(p.x / GRID) * GRID;
+        p.y = Math.round(p.y / GRID) * GRID;
+      }
+      return p;
     }
-    lastPlaced = p;
-    return;
-  }
 
-  // 同じマスに連続で置かない（重複防止）
-  if (lastPlaced && lastPlaced.x === p.x && lastPlaced.y === p.y) return;
+    function dist2(a, b) {
+      const dx = a.x - b.x;
+      const dy = a.y - b.y;
+      return dx*dx + dy*dy;
+    }
 
-  items.push({ x: p.x, y: p.y, type: current });
-  persist(); redraw();
-  lastPlaced = p;
-}
+    function findNearestIndex(p, maxPx=22) {
+      if (items.length === 0) return -1;
+      const max2 = maxPx*maxPx;
+      let best = -1, bestD = Infinity;
+      for (let i=0;i<items.length;i++){
+        const d = dist2(p, items[i]);
+        if (d < bestD) { bestD = d; best = i; }
+      }
+      return bestD <= max2 ? best : -1;
+    }
 
-  
+    function maybePlace(p) {
+      p = snapPoint(p);
+
+      if (current === "erase") {
+        const idx = findNearestIndex(p);
+        if (idx !== -1) {
+          items.splice(idx, 1);
+          persist(); redraw();
+        }
+        lastPlaced = p;
+        return;
+      }
+
+      if (lastPlaced && lastPlaced.x === p.x && lastPlaced.y === p.y) return;
+
+      items.push({ x: p.x, y: p.y, type: current });
+      persist(); redraw();
+      lastPlaced = p;
+    }
+
+    function touchDist(t1, t2) {
+      const dx = t1.clientX - t2.clientX;
+      const dy = t1.clientY - t2.clientY;
+      return Math.hypot(dx, dy);
+    }
 
     function startDraw(evt) {
+      if (evt.touches && evt.touches.length === 2) {
+        evt.preventDefault();
+        isPinching = true;
+        pinchStartDist = touchDist(evt.touches[0], evt.touches[1]);
+        pinchStartScale = scale;
+        return;
+      }
 
-      if (evt.touches && evt.touches.length === 2) return;
-  evt.preventDefault();
-  isDrawing = true;
-  lastPlaced = null;
-  const p = getPos(evt);
-  maybePlace(p);
-}
+      evt.preventDefault();
+      if (isPinching) return;
 
-function moveDraw(evt) {
-  // ★ 2本指のときは描画しない（ピンチ用）
-  if (evt.touches && evt.touches.length === 2) return;
-  if (!isDrawing) return;
+      isDrawing = true;
+      lastPlaced = null;
+      const p = getPos(evt);
+      maybePlace(p);
+    }
 
-  evt.preventDefault();
-  const p = getPos(evt);
-  maybePlace(p);
-}
+    function moveDraw(evt) {
+      if (evt.touches && evt.touches.length === 2 && isPinching) {
+        evt.preventDefault();
+        const d = touchDist(evt.touches[0], evt.touches[1]);
+        const next = pinchStartScale * (d / pinchStartDist);
+        scale = clamp(next, MIN_SCALE, MAX_SCALE);
+        redraw();
+        return;
+      }
 
-function endDraw(evt) {
-  if (!isDrawing) return;
-  evt.preventDefault();
-  isDrawing = false;
-  lastPlaced = null;
-}
+      if (!isDrawing) return;
+      if (isPinching) return;
 
-// mouse
-canvas.addEventListener("mousedown", startDraw);
-canvas.addEventListener("mousemove", moveDraw);
-window.addEventListener("mouseup", endDraw);
+      evt.preventDefault();
+      const p = getPos(evt);
+      maybePlace(p);
+    }
 
-// touch
-canvas.addEventListener("touchstart", startDraw, { passive: false });
-canvas.addEventListener("touchmove", moveDraw, { passive: false });
-window.addEventListener("touchend", endDraw, { passive: false });
+    function endDraw(evt) {
+      evt.preventDefault();
+
+      if (evt.touches && evt.touches.length < 2) {
+        isPinching = false;
+      } else if (!evt.touches) {
+        // mouseup のとき
+        isPinching = false;
+      }
+
+      isDrawing = false;
+      lastPlaced = null;
+    }
+
+    // mouse
+    canvas.addEventListener("mousedown", startDraw);
+    canvas.addEventListener("mousemove", moveDraw);
+    window.addEventListener("mouseup", endDraw);
+
+    // touch
+    canvas.addEventListener("touchstart", startDraw, { passive: false });
+    canvas.addEventListener("touchmove", moveDraw, { passive: false });
+    window.addEventListener("touchend", endDraw, { passive: false });
+    window.addEventListener("touchcancel", endDraw, { passive: false });
 
     titleEl.addEventListener("input", () => { persist(); redraw(); });
 
