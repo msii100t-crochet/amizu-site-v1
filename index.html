@@ -261,15 +261,17 @@
     }
 
     function snapPoint(p) {
-  if (SNAP) {
-    // 横だけ：マス中心に吸着
-    p.x = Math.floor(p.x / GRID) * GRID + GRID / 2;
+  // 横スナップは「常に」効かせる（ON/OFFで制御したいなら後で）
+  p.x = Math.floor(p.x / GRID) * GRID + GRID / 2;
 
-    // 行固定ONのときだけ、縦をガイド行に吸着
-    if (lockRow) p.y = rowY;
+  // 縦は「行固定ON」のときだけ効かせる
+  if (lockRow) {
+    p.y = rowY;
   }
+
   return p;
 }
+
 
 
     function dist2(a, b) {
