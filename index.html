@@ -269,7 +269,9 @@
     ctx.beginPath();
     ctx.moveTo(x - slashHalf, slashY - GRID_Y * 0.22);
     ctx.lineTo(x + slashHalf, slashY + GRID_Y * 0.22);
-    ctx.stroke
+    ctx.stroke();
+  }
+   }
 
     function redraw() {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
