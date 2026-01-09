@@ -109,6 +109,11 @@
     const LABEL = { ch: "鎖", sc: "細編み", dc: "長編み", erase: "消しゴム" };
     const GRID = 30;      // グリッド間隔（今の線と同じ）
     const SNAP = true;    // スナップON/OFF（後でトグル化できる）
+    let scale = 1;
+
+    let isDrawing = false;
+    let lastPlaced = null;
+    
 　　　let isDrawing = false;
 　　　let lastPlaced = null; // {x,y}
     
@@ -178,13 +183,13 @@
     }
 
     function redraw() {
-  // いったん変形をリセット
+  const s = (typeof scale === "number" && isFinite(scale)) ? scale : 1;
+
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   ctx.save();
-  // ★ 拡大率を適用
-  ctx.scale(scale, scale);
+  ctx.scale(s, s);
 
   drawGrid();
   drawTitle();
@@ -192,6 +197,7 @@
 
   ctx.restore();
 }
+
 
     function getPos(evt) {
       const rect = canvas.getBoundingClientRect();
@@ -225,18 +231,6 @@ function findNearestIndex(p, maxPx=22) {
   }
   return bestD <= max2 ? best : -1;
 }
-    
-
-    function findNearestIndex(p, maxPx=22) {
-      if (items.length === 0) return -1;
-      const max2 = maxPx*maxPx;
-      let best = -1, bestD = Infinity;
-      for (let i=0;i<items.length;i++){
-        const d = dist2(p, items[i]);
-        if (d < bestD) { bestD = d; best = i; }
-      }
-      return bestD <= max2 ? best : -1;
-    }
 
     function snapPoint(p) {
   if (SNAP) {
@@ -268,29 +262,7 @@ function maybePlace(p) {
   lastPlaced = p;
 }
 
-    function onCanvasTap(evt) {
-      evt.preventDefault();
-      const p = getPos(evt);
-        // snap to grid
-    if (SNAP) {
-        p.x = Math.round(p.x / GRID) * GRID;
-        p.y = Math.round(p.y / GRID) * GRID;
-          }
-
-      
-
-      if (current === "erase") {
-        const idx = findNearestIndex(p);
-        if (idx !== -1) {
-          items.splice(idx, 1);
-          persist(); redraw();
-        }
-        return;
-      }
-
-      items.push({ x: p.x, y: p.y, type: current });
-      persist(); redraw();
-    }
+  
 
     function startDraw(evt) {
 
