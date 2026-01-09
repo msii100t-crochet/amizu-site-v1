@@ -19,7 +19,17 @@
     button:active { transform: translateY(1px); }
     button.selected { border-color:#111; }
     .small { font-size:12px; color:var(--muted); }
-    canvas { width:100%; height:auto; background:#fff; border:1px solid var(--line); border-radius:12px; touch-action: none; }
+    canvas {
+  width:100%;
+  height:auto;
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:12px;
+  touch-action: none;
+
+  /* 🌟 ご褒美カスタム */
+  box-shadow: 0 10px 30px rgba(0,0,0,.08);
+}
     input[type="text"]{ width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:10px; font-size:14px; background:#fff; }
     .badge { display:inline-block; padding:4px 10px; border-radius:999px; background:#fff; border:1px solid var(--line); font-size:12px; color:var(--muted); }
     footer { padding:16px; color:var(--muted); font-size:12px; text-align:center; }
