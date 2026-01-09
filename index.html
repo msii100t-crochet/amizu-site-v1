@@ -18,6 +18,40 @@
     button { border:1px solid var(--line); background:#fff; border-radius:999px; padding:10px 14px; font-size:14px; }
     button:active { transform: translateY(1px); }
     button.selected { border-color:#111; }
+    
+    button:active { transform: translateY(1px); }
+    button.selected { border-color:#111; }
+    
+    /* ★ここに②を貼る */
+    button.tool{
+      width:52px;
+      height:52px;
+      padding:0;
+      display:grid;
+      place-items:center;
+      border-radius:14px;
+      position:relative;
+    }
+    button.tool canvas{
+      width:34px;
+      height:34px;
+    }
+    button.tool::after{
+      content: attr(data-label);
+      position:absolute;
+      bottom:-18px;
+      left:50%;
+      transform:translateX(-50%);
+      font-size:10px;
+      color:var(--muted);
+      white-space:nowrap;
+    }
+    button.tool.selected{
+      outline:2px solid #111;
+      border-color:transparent;
+    }
+
+    
     .small { font-size:12px; color:var(--muted); }
     .badge { display:inline-block; padding:4px 10px; border-radius:999px; background:#fff; border:1px solid var(--line); font-size:12px; color:var(--muted); }
 
@@ -49,16 +83,16 @@
       </div>
 
       <div class="row" style="margin-top:12px;">
-      <button class="tool selected" data-type="ch">鎖</button>
-      <button class="tool" data-type="tch">立上鎖</button>
-      <button class="tool" data-type="sc">細編み</button>
-      <button class="tool" data-type="slst">引抜</button>
-      <button class="tool" data-type="hdc">中長</button>
-      <button class="tool" data-type="dc">長編み</button>
-      <button class="tool" data-type="tr">長々</button>
-      <button class="tool" data-type="erase">消しゴム</button>
+  <button class="tool selected" data-type="ch" data-label="鎖"><canvas class="icon" width="60" height="60"></canvas></button>
+  <button class="tool" data-type="tch" data-label="立上鎖"><canvas class="icon" width="60" height="60"></canvas></button>
+  <button class="tool" data-type="sc" data-label="細編み"><canvas class="icon" width="60" height="60"></canvas></button>
+  <button class="tool" data-type="slst" data-label="引抜"><canvas class="icon" width="60" height="60"></canvas></button>
+  <button class="tool" data-type="hdc" data-label="中長"><canvas class="icon" width="60" height="60"></canvas></button>
+  <button class="tool" data-type="dc" data-label="長編み"><canvas class="icon" width="60" height="60"></canvas></button>
+  <button class="tool" data-type="tr" data-label="長々"><canvas class="icon" width="60" height="60"></canvas></button>
+  <button class="tool" data-type="erase" data-label="消しゴム"><canvas class="icon" width="60" height="60"></canvas></button>
+</div>
 
-      </div>
 
       <div style="margin-top:12px;">
         <canvas id="c" width="900" height="1200"></canvas>
@@ -316,6 +350,154 @@ function drawSymbol(type, x, y) {
   ctx.restore(); // ★これが超重要
 }
 
+    // ====== ボタンの中の小さな記号を描く（ツールアイコン） ======
+function drawToolIcons() {
+  toolBtns.forEach(btn => {
+    const icon = btn.querySelector("canvas.icon");
+    if (!icon) return;
+
+    const ictx = icon.getContext("2d");
+    const w = icon.width, h = icon.height;
+    ictx.setTransform(1,0,0,1,0,0);
+    ictx.clearRect(0,0,w,h);
+
+    // アイコンは「固定サイズのグリッド」で描く（本体のGRIDとは独立）
+    const GX = 36;   // 横グリッド相当
+    const GY = 24;   // 縦グリッド相当（横長感）
+    const cx = w/2;
+    const cy = h/2;
+
+    // 消しゴムだけアイコンを別表現
+    const type = btn.dataset.type;
+    if (type === "erase") {
+      ictx.save();
+      ictx.strokeStyle = "#111";
+      ictx.lineWidth = 3;
+      ictx.lineCap = "round";
+      ictx.beginPath();
+      ictx.moveTo(cx-14, cy-14);
+      ictx.lineTo(cx+14, cy+14);
+      ictx.moveTo(cx+14, cy-14);
+      ictx.lineTo(cx-14, cy+14);
+      ictx.stroke();
+      ictx.restore();
+      return;
+    }
+
+    // それ以外は、ほぼ drawSymbol のミニ版をここで描く
+    ictx.save();
+    ictx.strokeStyle = "#111";
+    ictx.fillStyle = "#111";
+    ictx.lineWidth = 3;
+    ictx.lineCap = "round";
+    ictx.lineJoin = "round";
+
+    const rx = GX * 0.32;
+    const ry = GY * 0.22;
+
+    if (type === "ch") {
+      ictx.beginPath();
+      ictx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+      ictx.stroke();
+
+    } else if (type === "tch") {
+      const rx2 = GX * 0.20;
+      const ry2 = GY * 0.55; // 立上鎖は縦長に
+      ictx.beginPath();
+      ictx.ellipse(cx, cy, rx2, ry2, 0, 0, Math.PI * 2);
+      ictx.stroke();
+
+    } else if (type === "slst") {
+      ictx.beginPath();
+      ictx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+      ictx.fill();
+
+    } else if (type === "sc") {
+      ictx.beginPath();
+      ictx.moveTo(cx - 10, cy - 10); ictx.lineTo(cx + 10, cy + 10);
+      ictx.moveTo(cx + 10, cy - 10); ictx.lineTo(cx - 10, cy + 10);
+      ictx.stroke();
+
+    } else if (type === "hdc") {
+      // 縦2目のT字（0.5目上補正）
+      const y0 = cy - GY/2;
+      const H = GY * 2;
+      const halfH = H/2;
+      const pad = GY * 0.18;
+      const yTop = y0 - halfH + pad;
+      const yBot = y0 + halfH - pad;
+
+      ictx.beginPath();
+      ictx.moveTo(cx, yTop); ictx.lineTo(cx, yBot);
+      ictx.stroke();
+
+      const topHalf = GX * 0.40;
+      ictx.beginPath();
+      ictx.moveTo(cx - topHalf, yTop); ictx.lineTo(cx + topHalf, yTop);
+      ictx.stroke();
+
+    } else if (type === "dc") {
+      // 縦3目のT字＋斜め1本
+      const H = GY * 3;
+      const halfH = H/2;
+      const pad = GY * 0.18;
+      const yTop = cy - halfH + pad;
+      const yBot = cy + halfH - pad;
+
+      ictx.beginPath();
+      ictx.moveTo(cx, yTop); ictx.lineTo(cx, yBot);
+      ictx.stroke();
+
+      const topHalf = GX * 0.40;
+      ictx.beginPath();
+      ictx.moveTo(cx - topHalf, yTop); ictx.lineTo(cx + topHalf, yTop);
+      ictx.stroke();
+
+      const slashY = yTop + GY * 1.15;
+      const slashHalf = GX * 0.30;
+      ictx.beginPath();
+      ictx.moveTo(cx - slashHalf, slashY - GY * 0.22);
+      ictx.lineTo(cx + slashHalf, slashY + GY * 0.22);
+      ictx.stroke();
+
+    } else if (type === "tr") {
+      // 縦4目、斜め2本（0.5目上補正）
+      const y0 = cy - GY/2;
+      const H = GY * 4;
+      const halfH = H/2;
+      const pad = GY * 0.18;
+      const yTop = y0 - halfH + pad;
+      const yBot = y0 + halfH - pad;
+
+      ictx.beginPath();
+      ictx.moveTo(cx, yTop); ictx.lineTo(cx, yBot);
+      ictx.stroke();
+
+      const topHalf = GX * 0.40;
+      ictx.beginPath();
+      ictx.moveTo(cx - topHalf, yTop); ictx.lineTo(cx + topHalf, yTop);
+      ictx.stroke();
+
+      const slashHalf = GX * 0.30;
+
+      const slashY1 = yTop + GY * 1.15;
+      ictx.beginPath();
+      ictx.moveTo(cx - slashHalf, slashY1 - GY * 0.22);
+      ictx.lineTo(cx + slashHalf, slashY1 + GY * 0.22);
+      ictx.stroke();
+
+      const slashY2 = yTop + GY * 2.15;
+      ictx.beginPath();
+      ictx.moveTo(cx - slashHalf, slashY2 - GY * 0.22);
+      ictx.lineTo(cx + slashHalf, slashY2 + GY * 0.22);
+      ictx.stroke();
+    }
+
+    ictx.restore();
+  });
+}
+
+
     function redraw() {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -331,6 +513,8 @@ function drawSymbol(type, x, y) {
 
   ctx.restore();
 }
+
+    
 
 
     function getPos(evt) {
@@ -572,6 +756,8 @@ bindTap(savePngBtn, () => {
 
     load();
     setTool("ch");
+    drawToolIcons();
+
     redraw();
   </script>
 </body>
