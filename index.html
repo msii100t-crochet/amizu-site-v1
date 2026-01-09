@@ -239,6 +239,10 @@
       const dy = a.y - b.y;
       return dx*dx + dy*dy;
     }
+    function hasItemAt(p) {
+    return items.some(it => it.x === p.x && it.y === p.y);
+    }
+
 
     function findNearestIndex(p, maxPx=22) {
       if (items.length === 0) return -1;
@@ -266,9 +270,16 @@
 
       if (lastPlaced && lastPlaced.x === p.x && lastPlaced.y === p.y) return;
 
+      // ★ 重ね置き禁止：既に同じ座標に何かあれば置かない
+      if (hasItemAt(p)) {
+        lastPlaced = p; // 連続ドラッグ時の無駄な判定を減らす
+        return;
+      }
+      
       items.push({ x: p.x, y: p.y, type: current });
       persist(); redraw();
       lastPlaced = p;
+
     }
 
     function touchDist(t1, t2) {
