@@ -170,6 +170,8 @@
     ctx.save();
     ctx.globalAlpha = 0.14;
     ctx.strokeStyle = "#000";
+    ctx.lineWidth = 1 / scale;
+
   
     for (let x = 0; x <= canvas.width; x += GRID_X) {
       ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
@@ -188,7 +190,7 @@
       ctx.fillText(titleEl.value || "（タイトル未設定）", 18, 36);
     }
 
-   function drawSymbol(type, x, y) {
+function drawSymbol(type, x, y) {
   ctx.save();
   ctx.strokeStyle = "#111";
   ctx.fillStyle = "#111";
@@ -270,8 +272,49 @@
     ctx.moveTo(x - slashHalf, slashY - GRID_Y * 0.22);
     ctx.lineTo(x + slashHalf, slashY + GRID_Y * 0.22);
     ctx.stroke();
+
+  } else if (type === "tr") {
+    // 長々編み：縦4目、斜め線2本（偶数なので 0.5目上に補正）
+    const y0 = y - GRID_Y / 2;
+
+    const H = GRID_Y * 4;
+    const halfH = H / 2;
+
+    const pad = GRID_Y * 0.18;
+    const yTop = y0 - halfH + pad;
+    const yBot = y0 + halfH - pad;
+
+    // 縦棒
+    ctx.beginPath();
+    ctx.moveTo(x, yTop);
+    ctx.lineTo(x, yBot);
+    ctx.stroke();
+
+    // 上の横棒
+    const topHalf = GRID_X * 0.40;
+    ctx.beginPath();
+    ctx.moveTo(x - topHalf, yTop);
+    ctx.lineTo(x + topHalf, yTop);
+    ctx.stroke();
+
+    // 斜め線2本
+    const slashHalf = GRID_X * 0.30;
+
+    const slashY1 = yTop + GRID_Y * 1.15;
+    ctx.beginPath();
+    ctx.moveTo(x - slashHalf, slashY1 - GRID_Y * 0.22);
+    ctx.lineTo(x + slashHalf, slashY1 + GRID_Y * 0.22);
+    ctx.stroke();
+
+    const slashY2 = yTop + GRID_Y * 2.15;
+    ctx.beginPath();
+    ctx.moveTo(x - slashHalf, slashY2 - GRID_Y * 0.22);
+    ctx.lineTo(x + slashHalf, slashY2 + GRID_Y * 0.22);
+    ctx.stroke();
   }
-   }
+
+  ctx.restore(); // ★これが超重要
+}
 
     function redraw() {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
