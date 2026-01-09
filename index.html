@@ -109,7 +109,8 @@
     const LABEL = { ch: "鎖", sc: "細編み", dc: "長編み", erase: "消しゴム" };
     const GRID = 30;      // グリッド間隔（今の線と同じ）
     const SNAP = true;    // スナップON/OFF（後でトグル化できる）
-
+　　　let isDrawing = false;
+　　　let lastPlaced = null; // {x,y}
     
     function load() {
       try { items = JSON.parse(localStorage.getItem(KEY) || "[]"); } catch { items = []; }
@@ -209,6 +210,36 @@
       return bestD <= max2 ? best : -1;
     }
 
+    function snapPoint(p) {
+  if (SNAP) {
+    p.x = Math.round(p.x / GRID) * GRID;
+    p.y = Math.round(p.y / GRID) * GRID;
+  }
+  return p;
+}
+
+function maybePlace(p) {
+  p = snapPoint(p);
+
+  // 消しゴムもドラッグでOK
+  if (current === "erase") {
+    const idx = findNearestIndex(p);
+    if (idx !== -1) {
+      items.splice(idx, 1);
+      persist(); redraw();
+    }
+    lastPlaced = p;
+    return;
+  }
+
+  // 同じマスに連続で置かない（重複防止）
+  if (lastPlaced && lastPlaced.x === p.x && lastPlaced.y === p.y) return;
+
+  items.push({ x: p.x, y: p.y, type: current });
+  persist(); redraw();
+  lastPlaced = p;
+}
+
     function onCanvasTap(evt) {
       evt.preventDefault();
       const p = getPos(evt);
@@ -233,8 +264,37 @@
       persist(); redraw();
     }
 
-    canvas.addEventListener("click", onCanvasTap);
-    canvas.addEventListener("touchstart", onCanvasTap, { passive: false });
+    function startDraw(evt) {
+  evt.preventDefault();
+  isDrawing = true;
+  lastPlaced = null;
+  const p = getPos(evt);
+  maybePlace(p);
+}
+
+function moveDraw(evt) {
+  if (!isDrawing) return;
+  evt.preventDefault();
+  const p = getPos(evt);
+  maybePlace(p);
+}
+
+function endDraw(evt) {
+  if (!isDrawing) return;
+  evt.preventDefault();
+  isDrawing = false;
+  lastPlaced = null;
+}
+
+// mouse
+canvas.addEventListener("mousedown", startDraw);
+canvas.addEventListener("mousemove", moveDraw);
+window.addEventListener("mouseup", endDraw);
+
+// touch
+canvas.addEventListener("touchstart", startDraw, { passive: false });
+canvas.addEventListener("touchmove", moveDraw, { passive: false });
+window.addEventListener("touchend", endDraw, { passive: false });
 
     titleEl.addEventListener("input", () => { persist(); redraw(); });
 
