@@ -123,6 +123,9 @@
     let pinchStartScale = 1.0;
     let pinchCenter = { x: 0, y: 0 }; // ピンチ中心（キャンバス座標）
     let offset = { x: 0, y: 0 };      // 描画オフセット
+    let pinchStartScreen = { x: 0, y: 0 }; // ピンチ開始時の中心（画面→キャンバスpx）
+    let pinchStartOffset = { x: 0, y: 0 }; // ピンチ開始時のoffset
+
 
 
     function load() {
@@ -287,6 +290,10 @@
   const cx = ((t1.clientX + t2.clientX) / 2 - rect.left) * (canvas.width / rect.width);
   const cy = ((t1.clientY + t2.clientY) / 2 - rect.top) * (canvas.height / rect.height);
 
+  pinchStartScreen = { x: cx, y: cy };
+  pinchStartOffset = { x: offset.x, y: offset.y };
+
+
   pinchCenter = {
     x: (cx - offset.x) / scale,
     y: (cy - offset.y) / scale
@@ -307,23 +314,41 @@
 
     function moveDraw(evt) {
       if (evt.touches && evt.touches.length === 2 && isPinching) {
-        evt.preventDefault();
-        const d = touchDist(evt.touches[0], evt.touches[1]);
-        const nextScale = clamp(
-  pinchStartScale * (d / pinchStartDist),
-  MIN_SCALE,
-  MAX_SCALE
-);
+  evt.preventDefault();
 
-// ★ 中心がズレないよう offset を再計算
-offset.x = (pinchCenter.x * scale + offset.x) - (pinchCenter.x * nextScale);
-offset.y = (pinchCenter.y * scale + offset.y) - (pinchCenter.y * nextScale);
+  const t1 = evt.touches[0];
+  const t2 = evt.touches[1];
 
-scale = nextScale;
-redraw();
-return;
+  const rect = canvas.getBoundingClientRect();
+  const cx = ((t1.clientX + t2.clientX) / 2 - rect.left) * (canvas.width / rect.width);
+  const cy = ((t1.clientY + t2.clientY) / 2 - rect.top) * (canvas.height / rect.height);
 
-      }
+  // ---- 1) PAN: 指の中心が動いた分だけ offset を動かす ----
+  const panDx = cx - pinchStartScreen.x;
+  const panDy = cy - pinchStartScreen.y;
+
+  // まず「ピンチ開始時のoffset + パン量」に戻す（毎回積み上げない）
+  offset.x = pinchStartOffset.x + panDx;
+  offset.y = pinchStartOffset.y + panDy;
+
+  // ---- 2) ZOOM: 距離変化で scale 更新 ----
+  const d = touchDist(t1, t2);
+  const nextScale = clamp(
+    pinchStartScale * (d / pinchStartDist),
+    MIN_SCALE,
+    MAX_SCALE
+  );
+
+  // ---- 3) ZOOM中心固定: pinchCenter が画面上でズレないよう補正 ----
+  // 「いまの scale から nextScale へ変わる分」だけ offset を調整
+  offset.x = (pinchCenter.x * scale + offset.x) - (pinchCenter.x * nextScale);
+  offset.y = (pinchCenter.y * scale + offset.y) - (pinchCenter.y * nextScale);
+
+  scale = nextScale;
+  redraw();
+  return;
+}
+
 
       if (!isDrawing) return;
       if (isPinching) return;
