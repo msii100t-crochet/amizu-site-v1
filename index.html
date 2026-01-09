@@ -113,6 +113,8 @@
     // --- drawing (drag) ---
     let isDrawing = false;
     let lastPlaced = null; // {x,y}
+    let dragLockY = null; // ドラッグ中のY固定（ワールド座標）
+
 
     // --- pinch zoom ---
     let scale = 1.0;
@@ -309,8 +311,11 @@
 
       isDrawing = true;
       lastPlaced = null;
-      const p = getPos(evt);
-      maybePlace(p);
+      
+      const p0 = getPos(evt);
+      dragLockY = p0.y;          // ★ ドラッグ開始時のYを固定
+      maybePlace(p0);
+
     }
 
     function moveDraw(evt) {
@@ -356,7 +361,9 @@
 
       evt.preventDefault();
       const p = getPos(evt);
+      if (dragLockY != null) p.y = dragLockY;   // ★ X方向に引いてる間、Yはぶれさせない
       maybePlace(p);
+
     }
 
     function endDraw(evt) {
@@ -370,6 +377,8 @@
       }
 
       isDrawing = false;
+      dragLockY = null;
+
       lastPlaced = null;
     }
 
