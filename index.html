@@ -188,7 +188,7 @@
       ctx.fillText(titleEl.value || "（タイトル未設定）", 18, 36);
     }
 
-    function drawSymbol(type, x, y) {
+   function drawSymbol(type, x, y) {
   ctx.save();
   ctx.strokeStyle = "#111";
   ctx.fillStyle = "#111";
@@ -196,139 +196,80 @@
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
 
-  // セル基準のサイズ
   const rx = GRID_X * 0.32;
   const ry = GRID_Y * 0.22;
 
   if (type === "ch") {
-    // 鎖：横長セルに合わせて横長
     ctx.beginPath();
     ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
     ctx.stroke();
-    
+
   } else if (type === "tch") {
-    // 立ち上がり鎖：鎖をできるだけ縦長に
     const rx2 = GRID_X * 0.20;
     const ry2 = GRID_Y * 0.42;
     ctx.beginPath();
     ctx.ellipse(x, y, rx2, ry2, 0, 0, Math.PI * 2);
     ctx.stroke();
 
-   } else if (type === "slst") {
-    // 引き抜き：鎖編み（楕円）を黒塗り
+  } else if (type === "slst") {
     ctx.beginPath();
     ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
     ctx.fill();
 
-
   } else if (type === "sc") {
-    // 細編み：このまま（既存サイズ）
     ctx.beginPath();
     ctx.moveTo(x - 8, y - 8); ctx.lineTo(x + 8, y + 8);
     ctx.moveTo(x + 8, y - 8); ctx.lineTo(x - 8, y + 8);
     ctx.stroke();
 
-    } else if (type === "hdc") {
-      // 中長編み：縦に2目分のT字（偶数なので 0.5目上に補正）
-      const y0 = y - GRID_Y / 2; // ★ 0.5グリッド上へ
-    
-      const H = GRID_Y * 2;
-      const halfH = H / 2;
-    
-      const pad = GRID_Y * 0.18;
-      const yTop = y0 - halfH + pad;
-      const yBot = y0 + halfH - pad;
-    
-      // 縦棒
-      ctx.beginPath();
-      ctx.moveTo(x, yTop);
-      ctx.lineTo(x, yBot);
-      ctx.stroke();
-    
-      // 上の横棒
-      const topHalf = GRID_X * 0.40;
-      ctx.beginPath();
-      ctx.moveTo(x - topHalf, yTop);
-      ctx.lineTo(x + topHalf, yTop);
-      ctx.stroke();
+  } else if (type === "hdc") {
+    // 中長編み：縦2目（偶数なので 0.5目上に補正）
+    const y0 = y - GRID_Y / 2;
 
-  } else if (type === "dc") {
-  // 長編み：縦に3目分（ただし端を少し空けて小さめに）
-  const H = GRID_Y * 3;
-  const halfH = H / 2;
-
-  const pad = GRID_Y * 0.18; // ★上下の余白（小さめに見せる）
-  const yTop = y - halfH + pad;
-  const yBot = y + halfH - pad;
-
-  // 縦棒（上下に余白）
-  ctx.beginPath();
-  ctx.moveTo(x, yTop);
-  ctx.lineTo(x, yBot);
-  ctx.stroke();
-
-  // 上の横棒（T字）も少し短く
-  const topHalf = GRID_X * 0.40;
-  ctx.beginPath();
-  ctx.moveTo(x - topHalf, yTop);
-  ctx.lineTo(x + topHalf, yTop);
-  ctx.stroke();
-
-  // 斜め線（少し短く＆位置も少し下げて見やすく）
-  const slashY = yTop + GRID_Y * 1.15;
-  const slashHalf = GRID_X * 0.30;
-
-  ctx.beginPath();
-  ctx.moveTo(x - slashHalf, slashY - GRID_Y * 0.22);
-  ctx.lineTo(x + slashHalf, slashY + GRID_Y * 0.22);
-  ctx.stroke();
-
-  } else if (type === "tr") {
-    // 長々編み：縦に4目分、斜め線2本（偶数なので 0.5目上に補正）
-    const y0 = y - GRID_Y / 2; // ★ 0.5グリッド上へ
-  
-    const H = GRID_Y * 4;
+    const H = GRID_Y * 2;
     const halfH = H / 2;
-  
+
     const pad = GRID_Y * 0.18;
     const yTop = y0 - halfH + pad;
     const yBot = y0 + halfH - pad;
-  
-    // 縦棒
+
     ctx.beginPath();
     ctx.moveTo(x, yTop);
     ctx.lineTo(x, yBot);
     ctx.stroke();
-  
-    // 上の横棒
+
     const topHalf = GRID_X * 0.40;
     ctx.beginPath();
     ctx.moveTo(x - topHalf, yTop);
     ctx.lineTo(x + topHalf, yTop);
     ctx.stroke();
-  
-    // 斜め線2本
+
+  } else if (type === "dc") {
+    // 長編み：縦3目（少し小さめ）
+    const H = GRID_Y * 3;
+    const halfH = H / 2;
+
+    const pad = GRID_Y * 0.18;
+    const yTop = y - halfH + pad;
+    const yBot = y + halfH - pad;
+
+    ctx.beginPath();
+    ctx.moveTo(x, yTop);
+    ctx.lineTo(x, yBot);
+    ctx.stroke();
+
+    const topHalf = GRID_X * 0.40;
+    ctx.beginPath();
+    ctx.moveTo(x - topHalf, yTop);
+    ctx.lineTo(x + topHalf, yTop);
+    ctx.stroke();
+
+    const slashY = yTop + GRID_Y * 1.15;
     const slashHalf = GRID_X * 0.30;
-  
-    const slashY1 = yTop + GRID_Y * 1.15;
     ctx.beginPath();
-    ctx.moveTo(x - slashHalf, slashY1 - GRID_Y * 0.22);
-    ctx.lineTo(x + slashHalf, slashY1 + GRID_Y * 0.22);
-    ctx.stroke();
-  
-    const slashY2 = yTop + GRID_Y * 2.15;
-    ctx.beginPath();
-    ctx.moveTo(x - slashHalf, slashY2 - GRID_Y * 0.22);
-    ctx.lineTo(x + slashHalf, slashY2 + GRID_Y * 0.22);
-    ctx.stroke();
-  }
-
-
-}
-
-
-  ctx.restore();
-}
+    ctx.moveTo(x - slashHalf, slashY - GRID_Y * 0.22);
+    ctx.lineTo(x + slashHalf, slashY + GRID_Y * 0.22);
+    ctx.stroke
 
     function redraw() {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
