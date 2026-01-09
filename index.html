@@ -325,8 +325,15 @@
     titleEl.addEventListener("input", () => { persist(); redraw(); });
 
     toolBtns.forEach(btn => {
-      btn.addEventListener("click", () => setTool(btn.dataset.type));
-    });
+  const handler = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setTool(btn.dataset.type);
+  };
+  btn.addEventListener("click", handler);
+  btn.addEventListener("touchstart", handler, { passive: false });
+});
+
 
     undoBtn.addEventListener("click", () => {
       items.pop();
