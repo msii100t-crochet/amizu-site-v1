@@ -121,6 +121,9 @@
     let isPinching = false;
     let pinchStartDist = 0;
     let pinchStartScale = 1.0;
+    let pinchCenter = { x: 0, y: 0 }; // ピンチ中心（キャンバス座標）
+    let offset = { x: 0, y: 0 };      // 描画オフセット
+
 
     function load() {
       try { items = JSON.parse(localStorage.getItem(KEY) || "[]"); } catch { items = []; }
@@ -186,18 +189,21 @@
     }
 
     function redraw() {
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      ctx.save();
-      ctx.scale(scale, scale);
+  ctx.save();
+  // ★ オフセット → 拡大
+  ctx.translate(offset.x, offset.y);
+  ctx.scale(scale, scale);
 
-      drawGrid();
-      drawTitle();
-      for (const it of items) drawSymbol(it.type, it.x, it.y);
+  drawGrid();
+  drawTitle();
+  for (const it of items) drawSymbol(it.type, it.x, it.y);
 
-      ctx.restore();
-    }
+  ctx.restore();
+}
+
 
     function getPos(evt) {
       const rect = canvas.getBoundingClientRect();
@@ -207,7 +213,11 @@
       const x = (clientX - rect.left) * (canvas.width / rect.width);
       const y = (clientY - rect.top) * (canvas.height / rect.height);
 
-      return { x: x / scale, y: y / scale };
+      return {
+  x: (x - offset.x) / scale,
+  y: (y - offset.y) / scale
+};
+
     }
 
     function snapPoint(p) {
@@ -263,12 +273,28 @@
 
     function startDraw(evt) {
       if (evt.touches && evt.touches.length === 2) {
-        evt.preventDefault();
-        isPinching = true;
-        pinchStartDist = touchDist(evt.touches[0], evt.touches[1]);
-        pinchStartScale = scale;
-        return;
-      }
+  evt.preventDefault();
+  isPinching = true;
+
+  const t1 = evt.touches[0];
+  const t2 = evt.touches[1];
+
+  pinchStartDist = touchDist(t1, t2);
+  pinchStartScale = scale;
+
+  // ★ 指2本の中心をキャンバス座標に変換
+  const rect = canvas.getBoundingClientRect();
+  const cx = ((t1.clientX + t2.clientX) / 2 - rect.left) * (canvas.width / rect.width);
+  const cy = ((t1.clientY + t2.clientY) / 2 - rect.top) * (canvas.height / rect.height);
+
+  pinchCenter = {
+    x: (cx - offset.x) / scale,
+    y: (cy - offset.y) / scale
+  };
+
+  return;
+}
+
 
       evt.preventDefault();
       if (isPinching) return;
@@ -283,10 +309,20 @@
       if (evt.touches && evt.touches.length === 2 && isPinching) {
         evt.preventDefault();
         const d = touchDist(evt.touches[0], evt.touches[1]);
-        const next = pinchStartScale * (d / pinchStartDist);
-        scale = clamp(next, MIN_SCALE, MAX_SCALE);
-        redraw();
-        return;
+        const nextScale = clamp(
+  pinchStartScale * (d / pinchStartDist),
+  MIN_SCALE,
+  MAX_SCALE
+);
+
+// ★ 中心がズレないよう offset を再計算
+offset.x = (pinchCenter.x * scale + offset.x) - (pinchCenter.x * nextScale);
+offset.y = (pinchCenter.y * scale + offset.y) - (pinchCenter.y * nextScale);
+
+scale = nextScale;
+redraw();
+return;
+
       }
 
       if (!isDrawing) return;
