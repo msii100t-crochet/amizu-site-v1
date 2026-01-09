@@ -107,7 +107,11 @@
 
     const LABEL = { ch: "鎖", sc: "細編み", dc: "長編み", erase: "消しゴム" };
 
-    const GRID = 30;      // グリッド間隔
+    // グリッド間隔（横長セル：高さ:幅 = 2:3 くらい）
+    const GRID_Y = 30;          // 縦
+    const GRID_X = 45;          // 横（30 * 1.5）
+    const SNAP = true;          // スナップON（後で切替可）
+
     const SNAP = true;    // スナップON（後で切替可）
 
     // --- drawing (drag) ---
@@ -149,17 +153,20 @@
     function clamp(v, min, max){ return Math.max(min, Math.min(max, v)); }
 
     function drawGrid() {
-      ctx.save();
-      ctx.globalAlpha = 0.14;
-      ctx.strokeStyle = "#000";
-      for (let x=0; x<=canvas.width; x+=GRID) {
-        ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke();
-      }
-      for (let y=0; y<=canvas.height; y+=GRID) {
-        ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke();
-      }
-      ctx.restore();
+    ctx.save();
+    ctx.globalAlpha = 0.14;
+    ctx.strokeStyle = "#000";
+  
+    for (let x = 0; x <= canvas.width; x += GRID_X) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
     }
+    for (let y = 0; y <= canvas.height; y += GRID_Y) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+    }
+  
+    ctx.restore();
+  }
+
 
     function drawTitle() {
       ctx.fillStyle = "#111";
@@ -168,30 +175,61 @@
     }
 
     function drawSymbol(type, x, y) {
-      ctx.save();
-      ctx.strokeStyle = "#111";
-      ctx.fillStyle = "#111";
-      ctx.lineWidth = 3;
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
+  ctx.save();
+  ctx.strokeStyle = "#111";
+  ctx.fillStyle = "#111";
+  ctx.lineWidth = 3;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
 
-      if (type === "ch") {
-        ctx.beginPath();
-        ctx.ellipse(x, y, 10, 7, 0, 0, Math.PI * 2);
-        ctx.stroke();
-      } else if (type === "sc") {
-        ctx.beginPath();
-        ctx.moveTo(x-8, y-8); ctx.lineTo(x+8, y+8);
-        ctx.moveTo(x+8, y-8); ctx.lineTo(x-8, y+8);
-        ctx.stroke();
-      } else if (type === "dc") {
-        ctx.beginPath();
-        ctx.moveTo(x, y-12); ctx.lineTo(x, y+12);
-        ctx.moveTo(x-10, y-2); ctx.lineTo(x+10, y-2);
-        ctx.stroke();
-      }
-      ctx.restore();
-    }
+  // セル基準のサイズ
+  const rx = GRID_X * 0.32;
+  const ry = GRID_Y * 0.22;
+
+  if (type === "ch") {
+    // 鎖：横長セルに合わせて横長
+    ctx.beginPath();
+    ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+  } else if (type === "sc") {
+    // 細編み：このまま（既存サイズ）
+    ctx.beginPath();
+    ctx.moveTo(x - 8, y - 8); ctx.lineTo(x + 8, y + 8);
+    ctx.moveTo(x + 8, y - 8); ctx.lineTo(x - 8, y + 8);
+    ctx.stroke();
+
+  } else if (type === "dc") {
+    // 長編み：縦に3目分使う（3 * GRID_Y）
+    const H = GRID_Y * 3;           // 全高
+    const halfH = H / 2;
+
+    // 縦棒
+    ctx.beginPath();
+    ctx.moveTo(x, y - halfH);
+    ctx.lineTo(x, y + halfH);
+    ctx.stroke();
+
+    // 上の横棒（T字）
+    const topHalf = GRID_X * 0.45;
+    ctx.beginPath();
+    ctx.moveTo(x - topHalf, y - halfH);
+    ctx.lineTo(x + topHalf, y - halfH);
+    ctx.stroke();
+
+    // 斜めの線（参考画像のスラッシュ）
+    // 位置は「上から1目ちょい下」くらい
+    const slashY = y - halfH + GRID_Y * 1.2;
+    const slashHalf = GRID_X * 0.35;
+
+    ctx.beginPath();
+    ctx.moveTo(x - slashHalf, slashY - GRID_Y * 0.25);
+    ctx.lineTo(x + slashHalf, slashY + GRID_Y * 0.25);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
 
     function redraw() {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -226,12 +264,13 @@
     }
 
     function snapPoint(p) {
-  if (SNAP) {
-    p.x = Math.floor(p.x / GRID) * GRID + GRID / 2;
-    p.y = Math.floor(p.y / GRID) * GRID + GRID / 2;
+    if (SNAP) {
+      p.x = Math.floor(p.x / GRID_X) * GRID_X + GRID_X / 2;
+      p.y = Math.floor(p.y / GRID_Y) * GRID_Y + GRID_Y / 2;
+    }
+    return p;
   }
-  return p;
-}
+
 
 
     function dist2(a, b) {
