@@ -56,7 +56,7 @@
       </div>
 
       <div style="margin-top:12px;">
-        <canvas id="c" width="900" height="520"></canvas>
+        <canvas id="c" width="900" height="1200"></canvas>
       </div>
 
       <div class="row" style="margin-top:12px;">
@@ -224,12 +224,13 @@
     }
 
     function snapPoint(p) {
-      if (SNAP) {
-        p.x = Math.round(p.x / GRID) * GRID;
-        p.y = Math.round(p.y / GRID) * GRID;
-      }
-      return p;
-    }
+  if (SNAP) {
+    p.x = Math.floor(p.x / GRID) * GRID + GRID / 2;
+    p.y = Math.floor(p.y / GRID) * GRID + GRID / 2;
+  }
+  return p;
+}
+
 
     function dist2(a, b) {
       const dx = a.x - b.x;
