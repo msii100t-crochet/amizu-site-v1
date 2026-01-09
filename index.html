@@ -63,6 +63,10 @@
         <button id="undo">1つ戻す</button>
         <button id="clear">全部消す</button>
         <button id="savepng">PNG保存</button>
+        <button id="rowLock">行固定：ON</button>
+        <button id="rowUp">行↑</button>
+        <button id="rowDown">行↓</button>
+
       </div>
 
       <p class="small" style="margin:10px 0 0;">
@@ -98,6 +102,10 @@
     const savePngBtn = document.getElementById("savepng");
     const modeEl = document.getElementById("mode");
     const toolBtns = Array.from(document.querySelectorAll(".tool"));
+    const rowLockBtn = document.getElementById("rowLock");
+    const rowUpBtn = document.getElementById("rowUp");
+    const rowDownBtn = document.getElementById("rowDown");
+
 
     // --- state ---
     const KEY = "amizu_items_v3";
@@ -109,6 +117,10 @@
 
     const GRID = 30;      // グリッド間隔
     const SNAP = true;    // スナップON（後で切替可）
+    let lockRow = true;     // 行固定ON/OFF
+    let rowY = 150;         // ガイド線のY（キャンバス座標）
+    const ROW_NUDGE = 10;   // 行↑/↓の移動量
+
 
     // --- drawing (drag) ---
     let isDrawing = false;
@@ -125,6 +137,7 @@
     let offset = { x: 0, y: 0 };      // 描画オフセット
     let pinchStartScreen = { x: 0, y: 0 }; // ピンチ開始時の中心（画面→キャンバスpx）
     let pinchStartOffset = { x: 0, y: 0 }; // ピンチ開始時のoffset
+
 
 
 
@@ -202,12 +215,36 @@
 
   drawGrid();
   drawTitle();
+  drawRowGuide();
+
+
   for (const it of items) drawSymbol(it.type, it.x, it.y);
 
   ctx.restore();
 }
 
+    function drawRowGuide() {
+  ctx.save();
+  ctx.globalAlpha = 0.35;
+  ctx.strokeStyle = "#111";
+  ctx.lineWidth = 2;
 
+  ctx.beginPath();
+  ctx.moveTo(0, rowY);
+  ctx.lineTo(canvas.width, rowY);
+  ctx.stroke();
+
+  // 小さいラベル
+  ctx.globalAlpha = 0.6;
+  ctx.fillStyle = "#111";
+  ctx.font = "12px sans-serif";
+  ctx.fillText(lockRow ? "行固定 ON" : "行固定 OFF", 18, rowY - 8);
+
+  ctx.restore();
+}
+
+
+    
     function getPos(evt) {
       const rect = canvas.getBoundingClientRect();
       const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
@@ -225,8 +262,11 @@
 
     function snapPoint(p) {
   if (SNAP) {
+    // 横だけ：マス中心に吸着
     p.x = Math.floor(p.x / GRID) * GRID + GRID / 2;
-    p.y = Math.floor(p.y / GRID) * GRID + GRID / 2;
+
+    // 行固定ONのときだけ、縦をガイド行に吸着
+    if (lockRow) p.y = rowY;
   }
   return p;
 }
@@ -407,6 +447,11 @@
   el.addEventListener("touchstart", handler, { passive: false });
 }
 
+    function updateRowUI() {
+  rowLockBtn.textContent = "行固定：" + (lockRow ? "ON" : "OFF");
+}
+
+
 bindTap(undoBtn, () => {
   items.pop();
   persist(); redraw();
@@ -418,6 +463,23 @@ bindTap(clearBtn, () => {
   persist(); redraw();
 });
 
+    bindTap(rowLockBtn, () => {
+  lockRow = !lockRow;
+  updateRowUI();
+  redraw();
+});
+
+bindTap(rowUpBtn, () => {
+  rowY = Math.max(0, rowY - ROW_NUDGE);
+  redraw();
+});
+
+bindTap(rowDownBtn, () => {
+  rowY = Math.min(canvas.height, rowY + ROW_NUDGE);
+  redraw();
+});
+
+
 bindTap(savePngBtn, () => {
   const a = document.createElement("a");
   a.href = canvas.toDataURL("image/png");
@@ -428,6 +490,7 @@ bindTap(savePngBtn, () => {
 
     load();
     setTool("ch");
+    updateRowUI();
     redraw();
   </script>
 </body>
