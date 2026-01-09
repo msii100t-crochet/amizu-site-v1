@@ -178,11 +178,20 @@
     }
 
     function redraw() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      drawGrid();
-      drawTitle();
-      for (const it of items) drawSymbol(it.type, it.x, it.y);
-    }
+  // いったん変形をリセット
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  ctx.save();
+  // ★ 拡大率を適用
+  ctx.scale(scale, scale);
+
+  drawGrid();
+  drawTitle();
+  for (const it of items) drawSymbol(it.type, it.x, it.y);
+
+  ctx.restore();
+}
 
     function getPos(evt) {
       const rect = canvas.getBoundingClientRect();
@@ -190,14 +199,33 @@
       const clientY = evt.touches ? evt.touches[0].clientY : evt.clientY;
       const x = (clientX - rect.left) * (canvas.width / rect.width);
       const y = (clientY - rect.top) * (canvas.height / rect.height);
-      return { x, y };
+      return { x: x / scale, y: y / scale };
     }
 
     function dist2(a, b) {
-      const dx = a.x - b.x;
-      const dy = a.y - b.y;
-      return dx*dx + dy*dy;
-    }
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
+  return dx*dx + dy*dy;
+}
+
+// 👇 ここに入れる！
+function touchDist(t1, t2) {
+  const dx = t1.clientX - t2.clientX;
+  const dy = t1.clientY - t2.clientY;
+  return Math.hypot(dx, dy);
+}
+
+function findNearestIndex(p, maxPx=22) {
+  if (items.length === 0) return -1;
+  const max2 = maxPx*maxPx;
+  let best = -1, bestD = Infinity;
+  for (let i=0;i<items.length;i++){
+    const d = dist2(p, items[i]);
+    if (d < bestD) { bestD = d; best = i; }
+  }
+  return bestD <= max2 ? best : -1;
+}
+    
 
     function findNearestIndex(p, maxPx=22) {
       if (items.length === 0) return -1;
@@ -265,6 +293,8 @@ function maybePlace(p) {
     }
 
     function startDraw(evt) {
+
+      if (evt.touches && evt.touches.length === 2) return;
   evt.preventDefault();
   isDrawing = true;
   lastPlaced = null;
@@ -273,7 +303,10 @@ function maybePlace(p) {
 }
 
 function moveDraw(evt) {
+  // ★ 2本指のときは描画しない（ピンチ用）
+  if (evt.touches && evt.touches.length === 2) return;
   if (!isDrawing) return;
+
   evt.preventDefault();
   const p = getPos(evt);
   maybePlace(p);
