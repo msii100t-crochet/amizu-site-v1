@@ -97,9 +97,9 @@
     let current = "ch"; // ch / sc / dc / erase
 
     const LABEL = { ch: "鎖", sc: "細編み", dc: "長編み", erase: "消しゴム" };
+    const GRID = 30;      // グリッド間隔（今の線と同じ）
+    const SNAP = true;    // スナップON/OFF（後でトグル化できる）
 
-const GRID = 30;      // グリッド間隔（今の線と同じ）
-const SNAP = true;    // スナップON/OFF（後でトグル化できる）
     
     function load() {
       try { items = JSON.parse(localStorage.getItem(KEY) || "[]"); } catch { items = []; }
@@ -201,8 +201,13 @@ const SNAP = true;    // スナップON/OFF（後でトグル化できる）
 
     function onCanvasTap(evt) {
       evt.preventDefault();
-      const p = getPos(evt);const GRID = 30;      // グリッド間隔（今の線と同じ）
-const SNAP = true;    // スナップON/OFF（後でトグル化できる）
+      const p = getPos(evt);
+        // snap to grid
+    if (SNAP) {
+        p.x = Math.round(p.x / GRID) * GRID;
+        p.y = Math.round(p.y / GRID) * GRID;
+          }
+
       
 
       if (current === "erase") {
