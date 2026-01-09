@@ -335,23 +335,34 @@
 });
 
 
-    undoBtn.addEventListener("click", () => {
-      items.pop();
-      persist(); redraw();
-    });
+    function bindTap(el, fn) {
+  const handler = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    fn();
+  };
+  el.addEventListener("click", handler);
+  el.addEventListener("touchstart", handler, { passive: false });
+}
 
-    clearBtn.addEventListener("click", () => {
-      if (!confirm("全部消しますか？")) return;
-      items = [];
-      persist(); redraw();
-    });
+bindTap(undoBtn, () => {
+  items.pop();
+  persist(); redraw();
+});
 
-    savePngBtn.addEventListener("click", () => {
-      const a = document.createElement("a");
-      a.href = canvas.toDataURL("image/png");
-      a.download = (titleEl.value || "amizu") + ".png";
-      a.click();
-    });
+bindTap(clearBtn, () => {
+  if (!confirm("全部消しますか？")) return;
+  items = [];
+  persist(); redraw();
+});
+
+bindTap(savePngBtn, () => {
+  const a = document.createElement("a");
+  a.href = canvas.toDataURL("image/png");
+  a.download = (titleEl.value || "amizu") + ".png";
+  a.click();
+});
+
 
     load();
     setTool("ch");
