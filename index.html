@@ -33,8 +33,8 @@
       position:relative;
     }
     button.tool canvas{
-      width:34px;
-      height:34px;
+      width:36px;
+      height:36px;
     }
     button.tool::after{
       content: attr(data-label);
@@ -370,22 +370,63 @@ function drawToolIcons() {
     // 消しゴムだけアイコンを別表現
     const type = btn.dataset.type;
     if (type === "erase") {
+      const deg = (d) => (d * Math.PI) / 180;
+    
+      // 角丸矩形
+      function roundRectPath(ctx, x, y, w, h, r) {
+        const rr = Math.min(r, w / 2, h / 2);
+        ctx.beginPath();
+        ctx.moveTo(x + rr, y);
+        ctx.arcTo(x + w, y, x + w, y + h, rr);
+        ctx.arcTo(x + w, y + h, x, y + h, rr);
+        ctx.arcTo(x, y + h, x, y, rr);
+        ctx.arcTo(x, y, x + w, y, rr);
+        ctx.closePath();
+      }
+    
       ictx.save();
       ictx.strokeStyle = "#111";
+      ictx.fillStyle = "#111";
       ictx.lineWidth = 3;
       ictx.lineCap = "round";
-      ictx.beginPath();
-      ictx.moveTo(cx-14, cy-14);
-      ictx.lineTo(cx+14, cy+14);
-      ictx.moveTo(cx+14, cy-14);
-      ictx.lineTo(cx-14, cy+14);
+      ictx.lineJoin = "round";
+    
+      // 消しゴム本体（斜め）
+      ictx.translate(cx, cy);
+      ictx.rotate(deg(-28));
+      roundRectPath(ictx, -16, -11, 32, 22, 6);
       ictx.stroke();
+    
+      // ちょい立体感：中を薄く塗る（不要なら消してOK）
+      ictx.globalAlpha = 0.12;
+      ictx.fill();
+      ictx.globalAlpha = 1;
+    
+      // “くるっ” の線（添付のカーブっぽい）
+      ictx.rotate(deg(28)); // 回転を戻す（描きやすく）
+      ictx.beginPath();
+      ictx.arc(cx - 12, cy + 8, 10, deg(200), deg(20), false);
+      ictx.stroke();
+    
       ictx.restore();
       return;
     }
 
+
     // それ以外は、ほぼ drawSymbol のミニ版をここで描く
     ictx.save();
+          // ここから（ictx.save() の直後あたり）
+      const type = btn.dataset.type;
+      
+      // tall系（中長・長・長々）はアイコン内で縮小して見切れ防止
+      let s = 1.0;
+      if (type === "hdc" || type === "dc" || type === "tr") s = 0.72;
+      
+      ictx.translate(cx, cy);
+      ictx.scale(s, s);
+      ictx.translate(-cx, -cy);
+      // ここまで
+
     ictx.strokeStyle = "#111";
     ictx.fillStyle = "#111";
     ictx.lineWidth = 3;
