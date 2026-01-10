@@ -415,8 +415,6 @@ function drawToolIcons() {
 
     // それ以外は、ほぼ drawSymbol のミニ版をここで描く
     ictx.save();
-          // ここから（ictx.save() の直後あたり）
-      const type = btn.dataset.type;
       
       // tall系（中長・長・長々）はアイコン内で縮小して見切れ防止
       let s = 1.0;
